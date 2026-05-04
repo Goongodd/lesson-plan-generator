@@ -5,7 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Jewel Model Schools — Lesson Plan Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+<script>
+// Load docx library with fallback sources
+(function() {
+  function tryLoad(urls, index) {
+    if (index >= urls.length) {
+      console.error('All docx CDN sources failed');
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = urls[index];
+    s.onload = function() { console.log('docx loaded from: ' + urls[index]); };
+    s.onerror = function() { tryLoad(urls, index + 1); };
+    document.head.appendChild(s);
+  }
+  tryLoad([
+    'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',
+    'https://unpkg.com/docx@8.5.0/build/index.umd.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js'
+  ], 0);
+})();
+</script>
 <style>
   :root {
     --gold: #C9974A;

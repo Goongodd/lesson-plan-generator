@@ -800,12 +800,33 @@ async function downloadDocx() {
 
   const buffer = await Packer.toBuffer(doc);
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const fileName = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}.docx`.replace(/\s+/g, '_');
+
+  // Use showSaveFilePicker if available (modern Android Chrome), else fallback
+  if (window.showSaveFilePicker) {
+    try {
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{ description: 'Word Document', accept: { 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'] } }]
+      });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return;
+    } catch (e) {
+      // User cancelled or not supported — fall through
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: open blob in new tab (works on Android Chrome)
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}.docx`.replace(/\s+/g, '_');
+  a.download = fileName;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
 }
 </script>
 </body>

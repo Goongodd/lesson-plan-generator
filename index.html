@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Jewel Model Schools — Lesson Plan Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+<style>
+  :root {
+    --gold: #C9974A;
+    --gold-light: #E8C07A;
+    --deep: #0D1117;
+    --surface: #161B22;
+    --card: #1E242D;
+    --border: #2A3140;
+    --text: #E6EDF3;
+    --muted: #8B949E;
+    --green: #3FB950;
+    --red: #F85149;
+    --blue: #58A6FF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--deep);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG grain */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    padding: 48px 0 32px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .school-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, rgba(201,151,74,0.15), rgba(201,151,74,0.05));
+    border: 1px solid rgba(201,151,74,0.3);
+    border-radius: 100px;
+    padding: 6px 16px 6px 10px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--gold); text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .school-badge span { font-size: 18px; }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 900;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #E6EDF3 0%, var(--gold-light) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .subtitle { color: var(--muted); font-size: 15px; margin-top: 10px; font-weight: 300; }
+
+  /* FORM CARD */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--gold-light);
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-title::before {
+    content: '';
+    display: block; width: 3px; height: 20px;
+    background: var(--gold);
+    border-radius: 2px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .full { grid-column: 1 / -1; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+  input, select, textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 11px 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,151,74,0.12);
+  }
+  select option { background: var(--surface); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  /* API KEY */
+  .api-section {
+    background: linear-gradient(135deg, rgba(88,166,255,0.06), rgba(88,166,255,0.02));
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .api-icon { font-size: 22px; flex-shrink: 0; }
+  .api-text { flex: 1; }
+  .api-text p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .api-text strong { font-size: 13px; color: var(--blue); }
+  .api-input-wrap { flex: 2; }
+  .api-input-wrap input { font-size: 13px; font-family: monospace; letter-spacing: 0.04em; }
+
+  /* GENERATE BTN */
+  .btn-generate {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--gold), #A8762A);
+    border: none; border-radius: 12px;
+    color: #0D1117;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    letter-spacing: 0.02em;
+  }
+  .btn-generate:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-generate:active { transform: translateY(0); }
+  .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* SPINNER */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(13,17,23,0.3);
+    border-top-color: #0D1117;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* STATUS */
+  .status {
+    border-radius: 10px; padding: 14px 18px;
+    font-size: 13px; margin-top: 16px;
+    display: none; align-items: center; gap: 10px;
+  }
+  .status.error { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); color: #F85149; display: flex; }
+  .status.success { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); color: #3FB950; display: flex; }
+  .status.loading { background: rgba(201,151,74,0.08); border: 1px solid rgba(201,151,74,0.2); color: var(--gold-light); display: flex; }
+
+  /* OUTPUT */
+  #output-section { display: none; }
+  .output-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .output-toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .output-toolbar-left { display: flex; align-items: center; gap: 10px; }
+  .output-label {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--green);
+  }
+  .output-hint { font-size: 12px; color: var(--muted); }
+  .btn-download {
+    padding: 9px 20px;
+    background: var(--green);
+    border: none; border-radius: 8px;
+    color: #0D1117; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.2s;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .btn-download:hover { opacity: 0.85; }
+
+  #lesson-output {
+    padding: 28px 32px;
+    font-size: 14px; line-height: 1.8;
+    color: var(--text);
+    min-height: 300px;
+    outline: none;
+    white-space: pre-wrap;
+    font-family: 'DM Sans', sans-serif;
+  }
+  #lesson-output:focus { outline: none; }
+  #lesson-output[contenteditable="true"] { cursor: text; }
+  #lesson-output[contenteditable="true"]:focus {
+    background: rgba(201,151,74,0.02);
+  }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 8px 0 24px; }
+
+  /* FOOTER */
+  footer {
+    text-align: center; padding: 32px 0 48px;
+    color: var(--muted); font-size: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .full { grid-column: 1; }
+    .api-section { flex-direction: column; align-items: flex-start; }
+    .api-input-wrap { width: 100%; }
+    .card { padding: 20px; }
+    #lesson-output { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="school-badge"><span>🏫</span> Jewel Model Schools · Kubwa, Abuja</div>
+    <h1>Lesson Plan<br/>Generator</h1>
+    <p class="subtitle">Fill in the details below and get a fully formatted lesson plan — instantly.</p>
+  </header>
+
+  <!-- API KEY -->
+  <div class="api-section">
+    <div class="api-icon">🔑</div>
+    <div class="api-text">
+      <strong>Google Gemini API Key (Free)</strong>
+      <p>Get your free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--blue)">aistudio.google.com</a> — no credit card needed</p>
+    </div>
+    <div class="api-input-wrap">
+      <input type="password" id="api-key" placeholder="AIza..." autocomplete="off"/>
+    </div>
+  </div>
+
+  <!-- TEACHER INFO -->
+  <div class="card">
+    <div class="card-title">Teacher Information</div>
+    <div class="grid-2">
+      <div class="field full">
+        <label>Teacher's Full Name</label>
+        <input type="text" id="teacher-name" placeholder="e.g. Emordi Emeka James"/>
+      </div>
+      <div class="field">
+        <label>School Name</label>
+        <input type="text" id="school-name" placeholder="e.g. Jewel Model Schools" value="Jewel Model Schools, Kubwa Abuja"/>
+      </div>
+      <div class="field">
+        <label>Class</label>
+        <input type="text" id="class-name" placeholder="e.g. Basic Three" value="Basic Three"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- LESSON DETAILS -->
+  <div class="card">
+    <div class="card-title">Lesson Details</div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Subject</label>
+        <input type="text" id="subject" placeholder="e.g. Social Studies"/>
+      </div>
+      <div class="field">
+        <label>Topic</label>
+        <input type="text" id="topic" placeholder="e.g. Common Illness in Our Community"/>
+      </div>
+      <div class="field full">
+        <label>Sub-topic <span style="color:var(--muted);font-size:11px;text-transform:none;letter-spacing:0">(leave blank and AI will pick one)</span></label>
+        <input type="text" id="subtopic" placeholder="Optional — leave blank for AI to decide"/>
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="date"/>
+      </div>
+      <div class="field">
+        <label>Week</label>
+        <select id="week">
+          <option value="">Select week...</option>
+          <option>One</option><option>Two</option><option>Three</option>
+          <option>Four</option><option>Five</option><option>Six</option>
+          <option>Seven</option><option>Eight</option><option>Nine</option><option>Ten</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Time (Start)</label>
+        <input type="time" id="time-start"/>
+      </div>
+      <div class="field">
+        <label>Time (End)</label>
+        <input type="time" id="time-end"/>
+      </div>
+      <div class="field">
+        <label>Period</label>
+        <select id="period">
+          <option value="">Select period...</option>
+          <option>First</option><option>Second</option><option>Third</option>
+          <option>Fourth</option><option>Fifth</option><option>Sixth</option><option>Seventh</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Number in Class</label>
+        <input type="number" id="class-size" value="15" min="1" max="100"/>
+      </div>
+      <div class="field">
+        <label>Average Age</label>
+        <input type="text" id="avg-age" placeholder="e.g. 7 years" value="7 years"/>
+      </div>
+      <div class="field">
+        <label>Sex</label>
+        <select id="sex">
+          <option value="Mixed">Mixed</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERATE -->
+  <button class="btn-generate" id="gen-btn" onclick="generatePlan()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btn-text">✨ Generate Lesson Plan</span>
+  </button>
+
+  <div class="status" id="status-msg"></div>
+
+  <!-- OUTPUT -->
+  <div id="output-section">
+    <div class="output-card">
+      <div class="output-toolbar">
+        <div class="output-toolbar-left">
+          <span class="output-label">✓ Lesson Plan Ready</span>
+          <span class="output-hint">Click anywhere in the text to edit</span>
+        </div>
+        <button class="btn-download" onclick="downloadDocx()">⬇ Download .docx</button>
+      </div>
+      <div id="lesson-output" contenteditable="true"></div>
+    </div>
+  </div>
+
+  <footer>
+    Jewel Model Schools · Lesson Plan Generator · Powered by Google Gemini (Free)
+  </footer>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────
+function setStatus(type, msg) {
+  const el = document.getElementById('status-msg');
+  el.className = 'status ' + type;
+  el.innerHTML = msg;
+  el.style.display = msg ? 'flex' : 'none';
+}
+
+function formatTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  const ampm = hr >= 12 ? 'PM' : 'AM';
+  const hr12 = hr % 12 || 12;
+  return `${hr12}:${m} ${ampm}`;
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const date = new Date(d + 'T12:00:00');
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const day = date.getDate();
+  const suffix = ['th','st','nd','rd'][(day % 10 > 3 || Math.floor(day / 10) === 1) ? 0 : day % 10] || 'th';
+  return `${days[date.getDay()]} ${day}${suffix} ${months[date.getMonth()]}, ${date.getFullYear()}`;
+}
+
+function getDuration(start, end) {
+  if (!start || !end) return '40 minutes';
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  return diff > 0 ? `${diff} minutes` : '40 minutes';
+}
+
+function getVal(id) { return document.getElementById(id).value.trim(); }
+
+// ─────────────────────────────────────────
+// GENERATE
+// ─────────────────────────────────────────
+async function generatePlan() {
+  const apiKey    = getVal('api-key');
+  const teacher   = getVal('teacher-name');
+  const school    = getVal('school-name');
+  const cls       = getVal('class-name');
+  const subject   = getVal('subject');
+  const topic     = getVal('topic');
+  const subtopic  = getVal('subtopic');
+  const dateVal   = getVal('date');
+  const week      = getVal('week');
+  const timeStart = getVal('time-start');
+  const timeEnd   = getVal('time-end');
+  const period    = getVal('period');
+  const classSize = getVal('class-size');
+  const avgAge    = getVal('avg-age');
+  const sex       = getVal('sex');
+
+  if (!apiKey)    return setStatus('error', '🔑 Please enter your Google Gemini API key.');
+  if (!teacher)   return setStatus('error', '✏️ Please enter the teacher\'s name.');
+  if (!subject)   return setStatus('error', '📚 Please enter the subject.');
+  if (!topic)     return setStatus('error', '📝 Please enter the topic.');
+  if (!dateVal)   return setStatus('error', '📅 Please select a date.');
+  if (!week)      return setStatus('error', '🗓 Please select the week.');
+  if (!timeStart || !timeEnd) return setStatus('error', '⏰ Please enter the lesson time.');
+  if (!period)    return setStatus('error', '🔢 Please select the period.');
+
+  const formattedDate = formatDate(dateVal);
+  const timeRange     = `${timeStart} - ${timeEnd}`;
+  const duration      = getDuration(timeStart, timeEnd);
+  const subjectLine   = subtopic ? `Sub-topic: ${subtopic}` : '(Choose the most appropriate sub-topic yourself based on the topic.)';
+
+  const prompt = `You are a professional Nigerian primary school lesson plan writer.
+
+Create a detailed weekly lesson plan for the following:
+
+School: ${school}
+Teacher: ${teacher}
+Date: ${formattedDate}
+Week: ${week}
+Class: ${cls}
+Subject: ${subject}
+Topic: ${topic}
+${subjectLine}
+Time: ${timeRange}
+Duration: ${duration}
+Period: ${period}
+Number in Class: ${classSize}
+Average Age: ${avgAge}
+Sex: ${sex}
+
+STRICT RULES:
+1. The lesson development must have EXACTLY 3 steps (Step 1, Step 2, Step 3). No more, no less.
+2. Evaluation questions must be numbered i. ii. iii. with a blank line between each.
+3. Specific objectives must be numbered i. ii. iii. with a blank line between each.
+4. Write content appropriate for ${avgAge} old Nigerian primary school pupils.
+5. Teaching method is always: Teacher and pupil class interaction.
+6. Include: Introduction, Step 1, Step 2, Step 3, Evaluation, Summary/Conclusion, Assignment.
+
+Format the lesson plan as clean plain text using this EXACT structure:
+
+JEWEL MODEL SCHOOLS KUBWA ABUJA
+WEEKLY LESSON PLAN
+
+NAME OF TEACHER: ${teacher}
+DATE: ${formattedDate}
+WEEK: ${week}
+CLASS: ${cls}
+SUBJECT: ${subject}
+TOPIC: ${topic}
+SUB-TOPIC: [your chosen sub-topic]
+TIME: ${timeRange}
+DURATION: ${duration}
+PERIOD: ${period}
+SEX: ${sex}
+AVERAGE AGE: ${avgAge}
+NUMBER IN CLASS: ${classSize}
+TEACHING METHOD: Teacher and pupil class interaction
+SPECIFIC OBJECTIVES:
+At the end of the lesson, pupils should be able to:
+
+i. [objective one]
+
+ii. [objective two]
+
+iii. [objective three]
+
+PREVIOUS KNOWLEDGE: [one sentence]
+INSTRUCTIONAL MATERIAL: [list items]
+RATIONALE: [one sentence]
+REFERENCE BOOK: Pupil textbook
+
+--- LESSON PLAN DEVELOPMENT ---
+
+INTRODUCTION
+Teacher: [what teacher does]
+Learner: [what pupils do]
+Learning Point: [key point]
+
+STEP 1
+Teacher: [what teacher does]
+Learner: [what pupils do]
+Learning Point: [key point]
+
+STEP 2
+Teacher: [what teacher does]
+Learner: [what pupils do]
+Learning Point: [key point]
+
+STEP 3
+Teacher: [what teacher does]
+Learner: [what pupils do]
+Learning Point: [key point]
+
+EVALUATION
+i. [question one]
+
+ii. [question two]
+
+iii. [question three]
+
+Learner: To answer questions.
+Learning Point: Assessment.
+
+SUMMARY/CONCLUSION
+Teacher: [summary]
+Learner: Pupils listen.
+Learning Point: Conclusion.
+
+ASSIGNMENT
+[assignment text]
+Learner: The pupils write the assignment.
+Learning Point: Personal application.
+
+---
+ENDORSED BY: ___________________________
+COMMENT: ___________________________
+DATE: ___________________________`;
+
+  // UI: loading state
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('btn-text').textContent = 'Generating...';
+  document.getElementById('output-section').style.display = 'none';
+  setStatus('loading', '⏳ Generating your lesson plan... this takes about 15 seconds.');
+
+  try {
+    const proxyUrl = 'https://corsproxy.io/?url=';
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const response = await fetch(proxyUrl + encodeURIComponent(geminiUrl), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 2000, temperature: 0.7 }
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'API error — check your Gemini key.');
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) throw new Error('No content returned from API.');
+
+    document.getElementById('lesson-output').innerText = text;
+    document.getElementById('output-section').style.display = 'block';
+    document.getElementById('output-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setStatus('success', '✅ Lesson plan generated! You can click and edit the text directly before downloading.');
+
+  } catch (err) {
+    setStatus('error', '❌ ' + err.message);
+  } finally {
+    document.getElementById('gen-btn').disabled = false;
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('btn-text').textContent = '✨ Generate Lesson Plan';
+  }
+}
+
+// ─────────────────────────────────────────
+// DOWNLOAD DOCX
+// ─────────────────────────────────────────
+async function downloadDocx() {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          AlignmentType, BorderStyle, WidthType, ShadingType, UnderlineType, VerticalAlign } = docx;
+
+  const raw = document.getElementById('lesson-output').innerText;
+  const lines = raw.split('\n');
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: "000000" };
+  const borders = { top: border, bottom: border, left: border, right: border };
+
+  function makeCell(text, width, bold=false, shaded=false) {
+    return new TableCell({
+      borders,
+      width: { size: width, type: WidthType.DXA },
+      margins: { top: 80, bottom: 80, left: 120, right: 120 },
+      ...(shaded ? { shading: { fill: "D9D9D9", type: ShadingType.CLEAR } } : {}),
+      children: [new Paragraph({ children: [new TextRun({ text: String(text || ''), bold, size: 22, font: "Times New Roman" })] })]
+    });
+  }
+
+  function multiCell(textArr, width) {
+    return new TableCell({
+      borders,
+      width: { size: width, type: WidthType.DXA },
+      margins: { top: 80, bottom: 80, left: 120, right: 120 },
+      children: textArr.map(t => new Paragraph({ children: [new TextRun({ text: String(t || ''), size: 22, font: "Times New Roman" })] }))
+    });
+  }
+
+  // Parse key: value pairs from the header section
+  function parseField(label) {
+    const line = lines.find(l => l.startsWith(label + ':'));
+    return line ? line.slice(label.length + 1).trim() : '';
+  }
+
+  // Parse multi-line fields
+  function parseMultiField(label) {
+    const start = lines.findIndex(l => l.startsWith(label + ':'));
+    if (start === -1) return [label + ': Not specified'];
+    const result = [lines[start].slice(label.length + 1).trim()];
+    let i = start + 1;
+    while (i < lines.length && !lines[i].match(/^[A-Z ]+:/)) {
+      result.push(lines[i]);
+      i++;
+    }
+    return result.filter((_, idx) => idx === 0 || true);
+  }
+
+  const teacherName   = parseField('NAME OF TEACHER');
+  const dateStr       = parseField('DATE');
+  const weekStr       = parseField('WEEK');
+  const classStr      = parseField('CLASS');
+  const subjectStr    = parseField('SUBJECT');
+  const topicStr      = parseField('TOPIC');
+  const subTopicStr   = parseField('SUB-TOPIC');
+  const timeStr       = parseField('TIME');
+  const durationStr   = parseField('DURATION');
+  const periodStr     = parseField('PERIOD');
+  const sexStr        = parseField('SEX');
+  const ageStr        = parseField('AVERAGE AGE');
+  const classSize     = parseField('NUMBER IN CLASS');
+  const methodStr     = parseField('TEACHING METHOD');
+  const prevKnow      = parseField('PREVIOUS KNOWLEDGE');
+  const rationale     = parseField('RATIONALE');
+  const refBook       = parseField('REFERENCE BOOK');
+
+  // objectives
+  const objStart = lines.findIndex(l => l.includes('SPECIFIC OBJECTIVES'));
+  const objLines = [];
+  if (objStart !== -1) {
+    let i = objStart + 1;
+    while (i < lines.length && !lines[i].match(/^PREVIOUS KNOWLEDGE/)) {
+      objLines.push(lines[i]);
+      i++;
+    }
+  }
+
+  // materials
+  const matStart = lines.findIndex(l => l.startsWith('INSTRUCTIONAL MATERIAL'));
+  const matLines = [];
+  if (matStart !== -1) {
+    let i = matStart + 1;
+    while (i < lines.length && !lines[i].match(/^RATIONALE/)) {
+      matLines.push(lines[i]);
+      i++;
+    }
+  }
+
+  // Dev section rows
+  const devStart = lines.findIndex(l => l.includes('LESSON PLAN DEVELOPMENT'));
+  const devSection = devStart !== -1 ? lines.slice(devStart + 1) : [];
+
+  function extractStage(stageName) {
+    const idx = devSection.findIndex(l => l.trim().startsWith(stageName));
+    if (idx === -1) return { teacher: '', learner: '', point: '' };
+    const block = devSection.slice(idx, idx + 8);
+    const tLine = block.find(l => l.startsWith('Teacher:')) || '';
+    const lLine = block.find(l => l.startsWith('Learner:')) || '';
+    const pLine = block.find(l => l.startsWith('Learning Point:')) || '';
+    return {
+      teacher: tLine.replace('Teacher:', '').trim(),
+      learner: lLine.replace('Learner:', '').trim(),
+      point: pLine.replace('Learning Point:', '').trim(),
+    };
+  }
+
+  // Evaluation lines
+  const evalIdx = devSection.findIndex(l => l.trim() === 'EVALUATION');
+  const evalLines = [];
+  if (evalIdx !== -1) {
+    let i = evalIdx + 1;
+    while (i < devSection.length && !devSection[i].startsWith('Learner:') && !devSection[i].startsWith('SUMMARY')) {
+      evalLines.push(devSection[i]);
+      i++;
+    }
+  }
+
+  const intro   = extractStage('INTRODUCTION');
+  const step1   = extractStage('STEP 1');
+  const step2   = extractStage('STEP 2');
+  const step3   = extractStage('STEP 3');
+  const summary = extractStage('SUMMARY');
+  const assign  = extractStage('ASSIGNMENT');
+
+  function devRow(stage, teacher, learner, point, bold=false) {
+    return new TableRow({ children: [
+      makeCell(stage, 1800, true),
+      makeCell(teacher, 2700),
+      makeCell(learner, 2430),
+      makeCell(point, 2430),
+    ]});
+  }
+
+  function evalRow() {
+    return new TableRow({ children: [
+      makeCell('EVALUATION', 1800, true),
+      multiCell(evalLines.length ? evalLines : ['i. —', '', 'ii. —', '', 'iii. —'], 2700),
+      makeCell('To answer questions.', 2430),
+      makeCell('Assessment.', 2430),
+    ]});
+  }
+
+  const doc = new Document({
+    sections: [{ properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
+      children: [
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: parseField('') || 'JEWEL MODEL SCHOOLS KUBWA ABUJA', bold: true, underline: { type: UnderlineType.SINGLE }, size: 28, font: "Times New Roman" })] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: "WEEKLY LESSON PLAN", bold: true, underline: { type: UnderlineType.SINGLE }, size: 26, font: "Times New Roman" })] }),
+
+        new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [3500, 5860], rows: [
+          new TableRow({ children: [makeCell("NAME OF TEACHER", 3500, true), makeCell(teacherName, 5860)] }),
+          new TableRow({ children: [makeCell("DATE", 3500, true), makeCell(dateStr, 5860)] }),
+          new TableRow({ children: [makeCell("WEEK", 3500, true), makeCell(weekStr, 5860)] }),
+          new TableRow({ children: [makeCell("CLASS", 3500, true), makeCell(classStr, 5860)] }),
+          new TableRow({ children: [makeCell("SUBJECT", 3500, true), makeCell(subjectStr, 5860)] }),
+          new TableRow({ children: [makeCell("TOPIC", 3500, true), makeCell(topicStr, 5860)] }),
+          new TableRow({ children: [makeCell("SUB-TOPIC", 3500, true), makeCell(subTopicStr, 5860)] }),
+          new TableRow({ children: [makeCell("TIME", 3500, true), makeCell(timeStr, 5860)] }),
+          new TableRow({ children: [makeCell("DURATION", 3500, true), makeCell(durationStr, 5860)] }),
+          new TableRow({ children: [makeCell("PERIOD", 3500, true), makeCell(periodStr, 5860)] }),
+          new TableRow({ children: [makeCell("SEX", 3500, true), makeCell(sexStr, 5860)] }),
+          new TableRow({ children: [makeCell("AVERAGE AGE", 3500, true), makeCell(ageStr, 5860)] }),
+          new TableRow({ children: [makeCell("NUMBER IN CLASS", 3500, true), makeCell(classSize, 5860)] }),
+          new TableRow({ children: [makeCell("TEACHING METHOD", 3500, true), makeCell(methodStr, 5860)] }),
+          new TableRow({ children: [makeCell("SPECIFIC OBJECTIVES", 3500, true), multiCell(objLines.length ? objLines : ['At the end of the lesson, pupils should be able to:'], 5860)] }),
+          new TableRow({ children: [makeCell("PREVIOUS KNOWLEDGE", 3500, true), makeCell(prevKnow, 5860)] }),
+          new TableRow({ children: [makeCell("INSTRUCTIONAL MATERIAL", 3500, true), multiCell(matLines.length ? matLines : ['Student textbook'], 5860)] }),
+          new TableRow({ children: [makeCell("RATIONALE", 3500, true), makeCell(rationale, 5860)] }),
+          new TableRow({ children: [makeCell("REFERENCE BOOK", 3500, true), makeCell(refBook || 'Pupil textbook', 5860)] }),
+        ]}),
+
+        new Paragraph({ spacing: { before: 200, after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: "LESSON PLAN DEVELOPMENT", bold: true, size: 24, font: "Times New Roman" })] }),
+        new Paragraph({ spacing: { after: 100 } }),
+
+        new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: [1800, 2700, 2430, 2430], rows: [
+          new TableRow({ children: [
+            makeCell("STAGE/STEP TIME", 1800, true, true),
+            makeCell("TEACHER'S ACTIVITIES", 2700, true, true),
+            makeCell("LEARNER'S ACTIVITIES", 2430, true, true),
+            makeCell("LEARNING POINTS", 2430, true, true),
+          ]}),
+          devRow("INTRODUCTION", intro.teacher, intro.learner, intro.point),
+          devRow("PRESENTATION\n\nSTEP 1", step1.teacher, step1.learner, step1.point),
+          devRow("STEP 2", step2.teacher, step2.learner, step2.point),
+          devRow("STEP 3", step3.teacher, step3.learner, step3.point),
+          evalRow(),
+          devRow("SUMMARY/CONCLUSION", summary.teacher, summary.learner, summary.point),
+          devRow("ASSIGNMENT", assign.teacher, assign.learner, assign.point),
+        ]}),
+
+        new Paragraph({ spacing: { before: 300 } }),
+        new Paragraph({ children: [new TextRun({ text: "ENDORSED BY: ___________________________", italics: true, size: 22, font: "Times New Roman" })] }),
+        new Paragraph({ spacing: { before: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: "COMMENT: ___________________________", italics: true, size: 22, font: "Times New Roman" })] }),
+        new Paragraph({ spacing: { before: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: "DATE: ___________________________", italics: true, size: 22, font: "Times New Roman" })] }),
+      ]
+    }]
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}.docx`.replace(/\s+/g, '_');
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

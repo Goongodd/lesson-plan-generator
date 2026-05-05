@@ -400,6 +400,10 @@
 </div>
 
 <script>
+// ── SUPABASE ──────────────────────────────
+const SUPA_URL = "https://orfhhiyaigeokebwglkb.supabase.co";
+const SUPA_KEY = "sb_publishable_BsLkDNVCE4FrJ-P4i5eGIw_euUo4SNm";
+
 // ─────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────
@@ -826,18 +830,35 @@ async function downloadDocx() {
 
   const buffer = await Packer.toBuffer(doc);
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-  const fileName = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}.docx`.replace(/\s+/g, '_');
+  const fileName = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}_${Date.now()}.docx`.replace(/\s+/g, '_');
 
-  // Set the hidden <a> tag href and click it synchronously
-  const url = URL.createObjectURL(blob);
-  const link = document.getElementById('docx-link');
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  // Upload to Supabase Storage and open the public URL
+  setStatus('success', '⏫ Uploading document...');
+  try {
+    const uploadRes = await fetch(`${SUPA_URL}/storage/v1/object/lesson-plans/${fileName}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPA_KEY}`,
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'x-upsert': 'true'
+      },
+      body: blob
+    });
+
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json();
+      throw new Error(err.message || 'Upload failed');
+    }
+
+    const publicUrl = `${SUPA_URL}/storage/v1/object/public/lesson-plans/${fileName}`;
+    setStatus('success', '✅ Lesson plan ready! Opening download...');
+    window.location.href = publicUrl;
+
+  } catch (err) {
+    setStatus('error', '❌ Upload failed: ' + err.message);
+  }
 }
 
-// Wrapper so button click → async docx generation stays synchronous for the <a> click
 function prepareDocx() {
   downloadDocx();
 }

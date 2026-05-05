@@ -829,8 +829,7 @@ async function downloadDocx() {
     }]
   });
 
-  const buffer = await Packer.toBuffer(doc);
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const blob = await Packer.toBlob(doc);
   const fileName = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}_${Date.now()}.docx`.replace(/\s+/g, '_');
 
   // Upload to Supabase Storage and open the public URL

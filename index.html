@@ -27,6 +27,7 @@
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root {
     --gold: #C9974A;
@@ -850,48 +851,153 @@ async function downloadPdf() {
   }
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  
-  const lines = output.innerText.split('\n');
-  const margin = 15;
-  const pageWidth = 210 - margin * 2;
-  let y = 20;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const raw = output.innerText;
+  const lines = raw.split('\n');
 
-  doc.setFont('helvetica', 'normal');
+  function parseField(label) {
+    const line = lines.find(l => l.startsWith(label + ':'));
+    return line ? line.slice(label.length + 1).trim() : '';
+  }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) { y += 4; continue; }
+  const teacherName = parseField('NAME OF TEACHER');
+  const dateStr     = parseField('DATE');
+  const weekStr     = parseField('WEEK');
+  const classStr    = parseField('CLASS');
+  const subjectStr  = parseField('SUBJECT');
+  const topicStr    = parseField('TOPIC');
+  const subTopicStr = parseField('SUB-TOPIC');
+  const timeStr     = parseField('TIME');
+  const durationStr = parseField('DURATION');
+  const periodStr   = parseField('PERIOD');
+  const sexStr      = parseField('SEX');
+  const ageStr      = parseField('AVERAGE AGE');
+  const classSize   = parseField('NUMBER IN CLASS');
+  const methodStr   = parseField('TEACHING METHOD');
+  const prevKnow    = parseField('PREVIOUS KNOWLEDGE');
+  const rationale   = parseField('RATIONALE');
+  const refBook     = parseField('REFERENCE BOOK');
+  const matLine     = lines.find(l => l.startsWith('INSTRUCTIONAL MATERIAL:'));
+  const matStr      = matLine ? matLine.replace('INSTRUCTIONAL MATERIAL:', '').trim() : '';
 
-    // Header lines bold
-    if (i < 2 || line.startsWith('NAME OF TEACHER') || line.startsWith('DATE') || 
-        line.startsWith('WEEK') || line.startsWith('CLASS') || line.startsWith('SUBJECT') ||
-        line.startsWith('TOPIC') || line.startsWith('SUB-TOPIC') || line.startsWith('TIME') ||
-        line.startsWith('DURATION') || line.startsWith('PERIOD') || line.startsWith('SEX') ||
-        line.startsWith('AVERAGE AGE') || line.startsWith('NUMBER IN CLASS') ||
-        line.startsWith('TEACHING METHOD') || line.startsWith('SPECIFIC OBJECTIVES') ||
-        line.startsWith('PREVIOUS KNOWLEDGE') || line.startsWith('INSTRUCTIONAL') ||
-        line.startsWith('INTRODUCTION') || line.startsWith('STEP') ||
-        line.startsWith('EVALUATION') || line.startsWith('SUMMARY') || line.startsWith('ASSIGNMENT') ||
-        line.startsWith('ENDORSED') || line.startsWith('COMMENT')) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-    } else {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-    }
-
-    const wrapped = doc.splitTextToSize(line, pageWidth);
-    for (const wline of wrapped) {
-      if (y > 275) { doc.addPage(); y = 20; }
-      doc.text(wline, margin, y);
-      y += 6;
+  const objStart = lines.findIndex(l => l.includes('SPECIFIC OBJECTIVES'));
+  const objLines = [];
+  if (objStart !== -1) {
+    let i = objStart + 2;
+    while (i < lines.length && !lines[i].match(/^PREVIOUS KNOWLEDGE/)) {
+      if (lines[i].trim()) objLines.push(lines[i].trim());
+      i++;
     }
   }
 
-  const subject = document.getElementById('subject')?.value || 'Subject';
-  const topic = document.getElementById('topic')?.value || 'Topic';
-  const fileName = `Lesson_Plan_${subject}_${topic}.pdf`.replace(/\s+/g, '_');
+  const devStart = lines.findIndex(l => l.includes('LESSON PLAN DEVELOPMENT'));
+  const devSection = devStart !== -1 ? lines.slice(devStart + 1) : [];
+
+  function extractStage(stageName) {
+    const idx = devSection.findIndex(l => l.trim().startsWith(stageName));
+    if (idx === -1) return { teacher: '', learner: '', point: '' };
+    const block = devSection.slice(idx, idx + 10);
+    const tLines = [], lLines = [], pLines = [];
+    let mode = '';
+    for (const bl of block) {
+      if (bl.startsWith('Teacher:')) { mode = 't'; tLines.push(bl.replace('Teacher:', '').trim()); }
+      else if (bl.startsWith('Learner:')) { mode = 'l'; lLines.push(bl.replace('Learner:', '').trim()); }
+      else if (bl.startsWith('Learning Point:')) { mode = 'p'; pLines.push(bl.replace('Learning Point:', '').trim()); }
+    }
+    return { teacher: tLines.join(' '), learner: lLines.join(' '), point: pLines.join(' ') };
+  }
+
+  const evalIdx = devSection.findIndex(l => l.trim() === 'EVALUATION');
+  const evalLines = [];
+  if (evalIdx !== -1) {
+    let i = evalIdx + 1;
+    while (i < devSection.length && !devSection[i].startsWith('Learner:') && !devSection[i].startsWith('SUMMARY')) {
+      if (devSection[i].trim()) evalLines.push(devSection[i].trim());
+      i++;
+    }
+  }
+
+  const assignLine = lines.find(l => l.startsWith('ASSIGNMENT'));
+  const assignText = assignLine ? assignLine.replace(/^ASSIGNMENT[:\s]*/, '').trim() : '';
+
+  const intro   = extractStage('INTRODUCTION');
+  const step1   = extractStage('STEP 1');
+  const step2   = extractStage('STEP 2');
+  const step3   = extractStage('STEP 3');
+  const summary = extractStage('SUMMARY');
+
+  const pageW = 210;
+  const margin = 10;
+  const tableW = pageW - margin * 2;
+
+  // HEADER
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('JEWEL MODEL SCHOOLS KUBWA ABUJA', pageW / 2, 16, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text('WEEKLY LESSON PLAN', pageW / 2, 22, { align: 'center' });
+
+  // INFO TABLE
+  doc.autoTable({
+    startY: 26,
+    margin: { left: margin, right: margin },
+    tableWidth: tableW,
+    styles: { fontSize: 9, cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.3 },
+    body: [
+      [{ content: 'NAME OF TEACHER:', styles: { fontStyle: 'bold' } }, teacherName, { content: 'DATE:', styles: { fontStyle: 'bold' } }, dateStr],
+      [{ content: 'WEEK:', styles: { fontStyle: 'bold' } }, weekStr, { content: 'CLASS:', styles: { fontStyle: 'bold' } }, classStr],
+      [{ content: 'SUBJECT:', styles: { fontStyle: 'bold' } }, subjectStr, { content: 'TOPIC:', styles: { fontStyle: 'bold' } }, topicStr],
+      [{ content: 'SUB-TOPIC:', styles: { fontStyle: 'bold' } }, { content: subTopicStr, colSpan: 3 }],
+      [{ content: 'TIME:', styles: { fontStyle: 'bold' } }, timeStr, { content: 'DURATION:', styles: { fontStyle: 'bold' } }, durationStr],
+      [{ content: 'PERIOD:', styles: { fontStyle: 'bold' } }, periodStr, { content: 'SEX:', styles: { fontStyle: 'bold' } }, sexStr],
+      [{ content: 'AVERAGE AGE:', styles: { fontStyle: 'bold' } }, ageStr, { content: 'NUMBER IN CLASS:', styles: { fontStyle: 'bold' } }, classSize],
+      [{ content: 'TEACHING METHOD:', styles: { fontStyle: 'bold' } }, { content: methodStr, colSpan: 3 }],
+      [{ content: 'SPECIFIC OBJECTIVES:', styles: { fontStyle: 'bold' } }, { content: 'At the end of the lesson, pupils should be able to:\n' + objLines.join('\n'), colSpan: 3 }],
+      [{ content: 'PREVIOUS KNOWLEDGE:', styles: { fontStyle: 'bold' } }, { content: prevKnow, colSpan: 3 }],
+      [{ content: 'INSTRUCTIONAL MATERIAL:', styles: { fontStyle: 'bold' } }, { content: matStr, colSpan: 3 }],
+      [{ content: 'RATIONALE:', styles: { fontStyle: 'bold' } }, { content: rationale, colSpan: 3 }],
+      [{ content: 'REFERENCE BOOK:', styles: { fontStyle: 'bold' } }, { content: refBook, colSpan: 3 }],
+    ],
+    columnStyles: { 0: { cellWidth: 44 }, 1: { cellWidth: 44 }, 2: { cellWidth: 40 }, 3: { cellWidth: tableW - 128 } },
+    theme: 'grid',
+  });
+
+  // DEVELOPMENT TABLE
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 3,
+    margin: { left: margin, right: margin },
+    tableWidth: tableW,
+    styles: { fontSize: 9, cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.3 },
+    headStyles: { fillColor: [217,217,217], textColor: [0,0,0], fontStyle: 'bold', halign: 'center' },
+    head: [['LESSON DEVELOPMENT', "TEACHER'S ACTIVITY", "LEARNER'S ACTIVITY", 'LEARNING POINT']],
+    body: [
+      [{ content: 'INTRODUCTION', styles: { fontStyle: 'bold' } }, intro.teacher, intro.learner, intro.point],
+      [{ content: 'STEP 1', styles: { fontStyle: 'bold' } }, step1.teacher, step1.learner, step1.point],
+      [{ content: 'STEP 2', styles: { fontStyle: 'bold' } }, step2.teacher, step2.learner, step2.point],
+      [{ content: 'STEP 3', styles: { fontStyle: 'bold' } }, step3.teacher, step3.learner, step3.point],
+      [{ content: 'EVALUATION', styles: { fontStyle: 'bold' } }, { content: evalLines.join('\n'), colSpan: 2 }, 'Pupils answer questions.'],
+      [{ content: 'SUMMARY/CONCLUSION', styles: { fontStyle: 'bold' } }, summary.teacher, summary.learner, summary.point],
+      [{ content: 'ASSIGNMENT', styles: { fontStyle: 'bold' } }, { content: assignText, colSpan: 3 }],
+    ],
+    columnStyles: { 0: { cellWidth: 36 }, 1: { cellWidth: 54 }, 2: { cellWidth: 44 }, 3: { cellWidth: tableW - 134 } },
+    theme: 'grid',
+  });
+
+  // SIGN-OFF TABLE
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 3,
+    margin: { left: margin, right: margin },
+    tableWidth: tableW,
+    styles: { fontSize: 9, cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.3 },
+    body: [[
+      { content: 'ENDORSED BY:', styles: { fontStyle: 'bold' } }, '                              ',
+      { content: 'COMMENT:', styles: { fontStyle: 'bold' } }, '                              ',
+      { content: 'DATE:', styles: { fontStyle: 'bold' } }, '                   '
+    ]],
+    theme: 'grid',
+  });
+
+  const fileName = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}.pdf`.replace(/\s+/g, '_');
   doc.save(fileName);
 }
 </script>

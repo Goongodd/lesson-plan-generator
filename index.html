@@ -948,7 +948,7 @@ async function downloadPdf() {
 
   const labelW = 62;
   const valueW = tableW - labelW;
-  const cellStyle = { fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineColor: [0,0,0], lineWidth: 0.3 };
+  const cellStyle = { fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineColor: [0,0,0], lineWidth: 0.5, textColor: [0,0,0] };
   const boldLabel = (text) => ({ content: text, styles: { fontStyle: 'bold', fillColor: [255,255,255] } });
 
   // INFO TABLE — 2 columns matching sample docx
@@ -988,8 +988,8 @@ async function downloadPdf() {
     startY: doc.lastAutoTable.finalY + 2,
     margin: { left: margin, right: margin },
     tableWidth: tableW,
-    styles: { ...cellStyle, fontSize: 9 },
-    headStyles: { fillColor: [217,217,217], textColor: [0,0,0], fontStyle: 'bold', halign: 'center', fontSize: 9 },
+    styles: { ...cellStyle, fontSize: 9, lineWidth: 0.5 },
+    headStyles: { fillColor: [200,200,200], textColor: [0,0,0], fontStyle: 'bold', halign: 'center', fontSize: 9 },
     head: [['STAGE/STEP TIME', "TEACHER'S ACTIVITIES", "LEARNER'S ACTIVITIES", 'LEARNING POINTS']],
     body: [
       [{ content: 'INTRODUCTION', styles: { fontStyle: 'bold' } }, intro.teacher, intro.learner, intro.point],
@@ -1009,7 +1009,7 @@ async function downloadPdf() {
     startY: doc.lastAutoTable.finalY + 2,
     margin: { left: margin, right: margin },
     tableWidth: tableW,
-    styles: { ...cellStyle, fontStyle: 'italic' },
+    styles: { ...cellStyle, fontStyle: 'italic', lineWidth: 0.5 },
     body: [[
       { content: 'ENDORSED BY: ___________________________', styles: { fontStyle: 'bolditalic' } },
       { content: 'COMMENT: ___________________________', styles: { fontStyle: 'bolditalic' } },

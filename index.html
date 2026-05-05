@@ -26,6 +26,7 @@
   ], 0);
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --gold: #C9974A;
@@ -381,7 +382,10 @@
           <span class="output-label">✓ Lesson Plan Ready</span>
           <span class="output-hint">Click anywhere in the text to edit</span>
         </div>
-        <button class="btn-download" onclick="downloadDocx()">⬇ Download .docx</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-download" onclick="downloadDocx()">⬇ Download .docx</button>
+          <button class="btn-download" style="background:#4A9EFF;color:#fff;" onclick="downloadPdf()">⬇ Download PDF</button>
+        </div>
       </div>
       <div id="lesson-output" contenteditable="true"></div>
     </div>
@@ -836,6 +840,59 @@ async function downloadDocx() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+async function downloadPdf() {
+  const output = document.getElementById('lesson-output');
+  if (!output || !output.innerText.trim()) {
+    alert('Please generate a lesson plan first.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  
+  const lines = output.innerText.split('\n');
+  const margin = 15;
+  const pageWidth = 210 - margin * 2;
+  let y = 20;
+
+  doc.setFont('helvetica', 'normal');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) { y += 4; continue; }
+
+    // Header lines bold
+    if (i < 2 || line.startsWith('NAME OF TEACHER') || line.startsWith('DATE') || 
+        line.startsWith('WEEK') || line.startsWith('CLASS') || line.startsWith('SUBJECT') ||
+        line.startsWith('TOPIC') || line.startsWith('SUB-TOPIC') || line.startsWith('TIME') ||
+        line.startsWith('DURATION') || line.startsWith('PERIOD') || line.startsWith('SEX') ||
+        line.startsWith('AVERAGE AGE') || line.startsWith('NUMBER IN CLASS') ||
+        line.startsWith('TEACHING METHOD') || line.startsWith('SPECIFIC OBJECTIVES') ||
+        line.startsWith('PREVIOUS KNOWLEDGE') || line.startsWith('INSTRUCTIONAL') ||
+        line.startsWith('INTRODUCTION') || line.startsWith('STEP') ||
+        line.startsWith('EVALUATION') || line.startsWith('SUMMARY') || line.startsWith('ASSIGNMENT') ||
+        line.startsWith('ENDORSED') || line.startsWith('COMMENT')) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+    } else {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+    }
+
+    const wrapped = doc.splitTextToSize(line, pageWidth);
+    for (const wline of wrapped) {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.text(wline, margin, y);
+      y += 6;
+    }
+  }
+
+  const subject = document.getElementById('subject')?.value || 'Subject';
+  const topic = document.getElementById('topic')?.value || 'Topic';
+  const fileName = `Lesson_Plan_${subject}_${topic}.pdf`.replace(/\s+/g, '_');
+  doc.save(fileName);
 }
 </script>
 </body>

@@ -384,7 +384,8 @@
           <span class="output-hint">Click anywhere in the text to edit</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn-download" onclick="downloadDocx()">⬇ Download .docx</button>
+          <a id="docx-link" class="btn-download" style="text-decoration:none;display:none;" >⬇ Download .docx</a>
+          <button class="btn-download" onclick="prepareDocx()">⬇ Download .docx</button>
           <button class="btn-download" style="background:#4A9EFF;color:#fff;" onclick="downloadPdf()">⬇ Download PDF</button>
         </div>
       </div>
@@ -827,31 +828,18 @@ async function downloadDocx() {
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
   const fileName = `Lesson_Plan_${subjectStr || 'Subject'}_${topicStr || 'Topic'}.docx`.replace(/\s+/g, '_');
 
-  // Convert to base64 and open in new tab — works on Android where blob download is blocked
-  const arrayBuffer = await blob.arrayBuffer();
-  const uint8 = new Uint8Array(arrayBuffer);
-  let binary = '';
-  for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
-  const base64 = btoa(binary);
+  // Set the hidden <a> tag href and click it synchronously
+  const url = URL.createObjectURL(blob);
+  const link = document.getElementById('docx-link');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
 
-  // Open a new tab with a simple page that auto-triggers the download
-  const html = `<!DOCTYPE html><html><head><title>Downloading...</title></head><body>
-  <p style="font-family:sans-serif;padding:20px">Your Word document is downloading. If it doesn't start, <a id="dl" download="${fileName}">click here</a>.</p>
-  <script>
-    const b64 = "${base64}";
-    const bin = atob(b64);
-    const arr = new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-    const blob = new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const url = URL.createObjectURL(blob);
-    const a = document.getElementById('dl');
-    a.href = url;
-    a.click();
-  <\/script></body></html>`;
-
-  const pageBlob = new Blob([html], { type: 'text/html' });
-  const pageUrl = URL.createObjectURL(pageBlob);
-  window.open(pageUrl, '_blank');
+// Wrapper so button click → async docx generation stays synchronous for the <a> click
+function prepareDocx() {
+  downloadDocx();
 }
 
 async function downloadPdf() {

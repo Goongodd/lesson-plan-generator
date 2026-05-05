@@ -946,62 +946,74 @@ async function downloadPdf() {
   doc.setFontSize(11);
   doc.text('WEEKLY LESSON PLAN', pageW / 2, 22, { align: 'center' });
 
-  // INFO TABLE
+  const labelW = 62;
+  const valueW = tableW - labelW;
+  const cellStyle = { fontSize: 9, cellPadding: { top: 2, bottom: 2, left: 3, right: 3 }, lineColor: [0,0,0], lineWidth: 0.3 };
+  const boldLabel = (text) => ({ content: text, styles: { fontStyle: 'bold', fillColor: [255,255,255] } });
+
+  // INFO TABLE — 2 columns matching sample docx
   doc.autoTable({
     startY: 26,
     margin: { left: margin, right: margin },
     tableWidth: tableW,
-    styles: { fontSize: 9, cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.3 },
+    styles: cellStyle,
+    columnStyles: { 0: { cellWidth: labelW, fontStyle: 'bold' }, 1: { cellWidth: valueW } },
     body: [
-      [{ content: 'NAME OF TEACHER:', styles: { fontStyle: 'bold' } }, teacherName, { content: 'DATE:', styles: { fontStyle: 'bold' } }, dateStr],
-      [{ content: 'WEEK:', styles: { fontStyle: 'bold' } }, weekStr, { content: 'CLASS:', styles: { fontStyle: 'bold' } }, classStr],
-      [{ content: 'SUBJECT:', styles: { fontStyle: 'bold' } }, subjectStr, { content: 'TOPIC:', styles: { fontStyle: 'bold' } }, topicStr],
-      [{ content: 'SUB-TOPIC:', styles: { fontStyle: 'bold' } }, { content: subTopicStr, colSpan: 3 }],
-      [{ content: 'TIME:', styles: { fontStyle: 'bold' } }, timeStr, { content: 'DURATION:', styles: { fontStyle: 'bold' } }, durationStr],
-      [{ content: 'PERIOD:', styles: { fontStyle: 'bold' } }, periodStr, { content: 'SEX:', styles: { fontStyle: 'bold' } }, sexStr],
-      [{ content: 'AVERAGE AGE:', styles: { fontStyle: 'bold' } }, ageStr, { content: 'NUMBER IN CLASS:', styles: { fontStyle: 'bold' } }, classSize],
-      [{ content: 'TEACHING METHOD:', styles: { fontStyle: 'bold' } }, { content: methodStr, colSpan: 3 }],
-      [{ content: 'SPECIFIC OBJECTIVES:', styles: { fontStyle: 'bold' } }, { content: 'At the end of the lesson, pupils should be able to:\n' + objLines.join('\n'), colSpan: 3 }],
-      [{ content: 'PREVIOUS KNOWLEDGE:', styles: { fontStyle: 'bold' } }, { content: prevKnow, colSpan: 3 }],
-      [{ content: 'INSTRUCTIONAL MATERIAL:', styles: { fontStyle: 'bold' } }, { content: matStr, colSpan: 3 }],
-      [{ content: 'RATIONALE:', styles: { fontStyle: 'bold' } }, { content: rationale, colSpan: 3 }],
-      [{ content: 'REFERENCE BOOK:', styles: { fontStyle: 'bold' } }, { content: refBook, colSpan: 3 }],
+      [boldLabel('NAME OF TEACHER'), teacherName],
+      [boldLabel('DATE'), dateStr],
+      [boldLabel('WEEK'), weekStr],
+      [boldLabel('CLASS'), classStr],
+      [boldLabel('SUBJECT'), subjectStr],
+      [boldLabel('TOPIC'), topicStr],
+      [boldLabel('SUB-TOPIC'), subTopicStr],
+      [boldLabel('TIME'), timeStr],
+      [boldLabel('DURATION'), durationStr],
+      [boldLabel('PERIOD'), periodStr],
+      [boldLabel('SEX'), sexStr],
+      [boldLabel('AVERAGE AGE'), ageStr],
+      [boldLabel('NUMBER IN CLASS'), classSize],
+      [boldLabel('TEACHING METHOD'), methodStr],
+      [boldLabel('SPECIFIC OBJECTIVES'), 'At the end of the lesson, pupils should be able to: ' + objLines.filter(l=>l.trim()).join(' ')],
+      [boldLabel('PREVIOUS KNOWLEDGE'), prevKnow],
+      [boldLabel('INSTRUCTIONAL MATERIAL'), matStr],
+      [boldLabel('RATIONALE'), rationale],
+      [boldLabel('REFERENCE BOOK'), refBook || 'Pupil textbook'],
     ],
-    columnStyles: { 0: { cellWidth: 44 }, 1: { cellWidth: 44 }, 2: { cellWidth: 40 }, 3: { cellWidth: tableW - 128 } },
     theme: 'grid',
   });
 
-  // DEVELOPMENT TABLE
+  // DEVELOPMENT TABLE — 4 columns matching sample docx
+  const col0 = 38, col1 = 52, col2 = 46, col3 = tableW - col0 - col1 - col2;
   doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 3,
+    startY: doc.lastAutoTable.finalY + 2,
     margin: { left: margin, right: margin },
     tableWidth: tableW,
-    styles: { fontSize: 9, cellPadding: 2, lineColor: [0,0,0], lineWidth: 0.3 },
-    headStyles: { fillColor: [217,217,217], textColor: [0,0,0], fontStyle: 'bold', halign: 'center' },
-    head: [['LESSON DEVELOPMENT', "TEACHER'S ACTIVITY", "LEARNER'S ACTIVITY", 'LEARNING POINT']],
+    styles: { ...cellStyle, fontSize: 9 },
+    headStyles: { fillColor: [217,217,217], textColor: [0,0,0], fontStyle: 'bold', halign: 'center', fontSize: 9 },
+    head: [['STAGE/STEP TIME', "TEACHER'S ACTIVITIES", "LEARNER'S ACTIVITIES", 'LEARNING POINTS']],
     body: [
       [{ content: 'INTRODUCTION', styles: { fontStyle: 'bold' } }, intro.teacher, intro.learner, intro.point],
-      [{ content: 'STEP 1', styles: { fontStyle: 'bold' } }, step1.teacher, step1.learner, step1.point],
+      [{ content: 'PRESENTATION\n\nSTEP 1', styles: { fontStyle: 'bold' } }, step1.teacher, step1.learner, step1.point],
       [{ content: 'STEP 2', styles: { fontStyle: 'bold' } }, step2.teacher, step2.learner, step2.point],
       [{ content: 'STEP 3', styles: { fontStyle: 'bold' } }, step3.teacher, step3.learner, step3.point],
-      [{ content: 'EVALUATION', styles: { fontStyle: 'bold' } }, { content: evalLines.join('\n'), colSpan: 2 }, 'Pupils answer questions.'],
-      [{ content: 'SUMMARY/CONCLUSION', styles: { fontStyle: 'bold' } }, summary.teacher, summary.learner, summary.point],
+      [{ content: 'EVALUATION', styles: { fontStyle: 'bold' } }, { content: evalLines.join('\n'), colSpan: 2 }, { content: 'Assessment.', styles: {} }],
+      [{ content: 'SUMMARY/\nCONCLUSION', styles: { fontStyle: 'bold' } }, summary.teacher, summary.learner, summary.point],
       [{ content: 'ASSIGNMENT', styles: { fontStyle: 'bold' } }, { content: assignText, colSpan: 3 }],
     ],
-    columnStyles: { 0: { cellWidth: 36 }, 1: { cellWidth: 54 }, 2: { cellWidth: 44 }, 3: { cellWidth: tableW - 134 } },
+    columnStyles: { 0: { cellWidth: col0 }, 1: { cellWidth: col1 }, 2: { cellWidth: col2 }, 3: { cellWidth: col3 } },
     theme: 'grid',
   });
 
-  // SIGN-OFF TABLE
+  // SIGN-OFF — italic like sample docx
   doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 3,
+    startY: doc.lastAutoTable.finalY + 2,
     margin: { left: margin, right: margin },
     tableWidth: tableW,
-    styles: { fontSize: 9, cellPadding: 3, lineColor: [0,0,0], lineWidth: 0.3 },
+    styles: { ...cellStyle, fontStyle: 'italic' },
     body: [[
-      { content: 'ENDORSED BY:', styles: { fontStyle: 'bold' } }, '                              ',
-      { content: 'COMMENT:', styles: { fontStyle: 'bold' } }, '                              ',
-      { content: 'DATE:', styles: { fontStyle: 'bold' } }, '                   '
+      { content: 'ENDORSED BY: ___________________________', styles: { fontStyle: 'bolditalic' } },
+      { content: 'COMMENT: ___________________________', styles: { fontStyle: 'bolditalic' } },
+      { content: 'DATE: ___________________________', styles: { fontStyle: 'bolditalic' } },
     ]],
     theme: 'grid',
   });
